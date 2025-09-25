@@ -1,6 +1,7 @@
 from typing import List, Optional, Tuple, Union
 from pyzmail import PyzMessage, decode_text # type: ignore
 from pyzmail.parse import MailPart # type: ignore
+from .html_encoding import ensure_html_encoding
 
 import logging
 logger = logging.getLogger(__name__)
@@ -33,7 +34,8 @@ class Email(object):
                         self.html = md(payload)
                     except Exception:
                         logger.warning("cannot use markdownify to convert html, fallback to raw HTML instead.")
-                        self.html = payload
+                        # Ensure HTML content has proper UTF-8 encoding hint
+                        self.html = ensure_html_encoding(payload)
                 elif is_body.startswith('text/') or (
                     not is_body and not mailpart.type): # strange email with none mime
                     payload, used_charset=decode_text(mailpart.get_payload(), mailpart.charset, None)
