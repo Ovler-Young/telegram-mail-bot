@@ -65,5 +65,5 @@ class Email(object):
                 part_content = part.get_payload()
                 mainbody += f'\n- {part_name} ({part.type}, size {len(part_content)})'
                 retfiles.append((part_name, part.type, part_content))
-        mail_str += mainbody
+        mail_str += f'<blockquote expandable>{mainbody}</blockquote>'
         return mail_str, retfiles
