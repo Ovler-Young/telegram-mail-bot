@@ -1,4 +1,7 @@
-FROM docker.io/oz123/pipenv:3.11-v2023-6-26 AS builder
+# Build on the same Alpine base as the runtime, so compiled modules (bcrypt, cryptography) match its musl libc
+FROM docker.io/python:3.11-alpine AS builder
+
+RUN apk add --no-cache git && pip install --no-cache-dir pipenv==2026.11.0
 
 # Tell pipenv to create venv in the current directory
 ENV PIPENV_VENV_IN_PROJECT=1

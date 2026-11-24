@@ -2,6 +2,8 @@ import re
 from typing import List, Optional, Tuple, Union
 from pyzmail import PyzMessage, decode_text # type: ignore
 from pyzmail.parse import MailPart # type: ignore
+import html as html_lib
+from telegram.constants import MAX_MESSAGE_LENGTH
 
 import logging
 
@@ -146,21 +148,61 @@ class Email(object):
                 except Exception as e:
                     logger.warning("Failed to render html body: %s, falling back to send raw html", e) 
                     mainbody = "*(body not available, see raw html in file)*"
-                # retfiles.append((f"emailbot-full-{self.id}.html", "text/plain", rawbody.encode()))
+                    retfiles.append((f"emailbot-full-{self.id}.html", "text/plain", rawbody.encode()))
             else:
                 logger.debug("email body html invalid: %s, keep using text body instead", self.html)
         else:
             logger.debug("Directly using text body: %s", self.text)
-        if self.html:
-            # If there's html, always enclose a raw copy just in case there's any error
-            retfiles.append((f"emailbot-full-{self.id}.html", "text/plain", self.html.encode()))
+
+        # Show the body as a quote
+        mainbody_quote = ""
+        last_line_empty = True
+        for line in mainbody.splitlines():
+            if line.strip() != "":
+                last_line_empty = False
+                mainbody_quote += '> ' + line + '\n'
+            else:
+                if not last_line_empty:
+                    mainbody_quote += '> \n'
+                last_line_empty = True
+        mainbody = mainbody_quote.rstrip('\n')
+
+        additional_parts = ""
         if self.additional_parts:
-            mainbody += f'\n\nAdditional Parts:'
+            additional_parts += '\n\nAdditional Parts:'
             for part in self.additional_parts:
                 part: MailPart
                 part_name = part.filename
                 part_content = part.get_payload()
-                mainbody += f'\n- {part_name} ({part.type}, size {len(part_content)})'
+                additional_parts += f'\n- {part_name} ({part.type}, size {len(part_content)})'
                 retfiles.append((part_name, part.type, part_content))
+
+        # Long body: keep the beginning in the message, attach the full body as body.html
+        threshold = MAX_MESSAGE_LENGTH - len(mail_str) - len(additional_parts) - 1280 # escape will increase size
+
+        if threshold > 0 and len(mainbody) > threshold:
+            if self.html:
+                html_payload = self.html
+            else:
+                safe_text = html_lib.escape(mainbody).replace("\n", "<br/>\n")
+                html_payload = (
+                    "<html><head><meta charset='utf-8'></head>"
+                    "<body><pre style='white-space:pre-wrap'>" + safe_text + "</pre></body></html>"
+                )
+            retfiles.insert(0, ("body.html", "text/html", html_payload.encode("utf-8")))
+            mainbody_lines = []
+            current_length = 0
+            while current_length < threshold - 4:
+                next_newline = mainbody.find('\n', current_length)
+                if next_newline == -1:
+                    next_newline = len(mainbody)
+                line = mainbody[current_length:next_newline]
+                if current_length + len(line) + 1 > threshold:
+                    break
+                mainbody_lines.append(line)
+                current_length += len(line) + 1
+            mainbody = '\n'.join(mainbody_lines) + "……"
+
         mail_str += mainbody
+        mail_str += additional_parts
         return mail_str, retfiles

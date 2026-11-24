@@ -14,12 +14,12 @@ class Conf:
     ERR_REPORT_INTERVAL: int = 3600
     REQUEST_TIMEOUT: int = 60
     POLL_THREADS: int = 5
-    PREFER_HTML: bool = False
+    PREFER_HTML: bool = True
     
     DEBUG: bool = False
     SAVE_EMAIL_LOGS: bool = False
     ENABLED_PLUGINS: str = ''
-    
+
     _defaultValues: dict | None = None
     @classmethod
     def _reloadConf(cls):

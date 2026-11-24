@@ -518,7 +518,8 @@ def periodic_task() -> None:
                                     lambda text: updater.bot.send_message(
                                         chat_id=chat_id,reply_to_message_id=reply_to_message_id,
                                         text=text,
-                                        parse_mode="MarkdownV2"), # type: ignore[has-type]
+                                        parse_mode="MarkdownV2",
+                                        disable_web_page_preview=True), # type: ignore[has-type]
                                     content
                                 )
                             for filename, filemime, file_content in emailfiles:
